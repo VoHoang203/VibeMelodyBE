@@ -17,7 +17,7 @@ const app = express();
 // ✅ CORS
 app.use(
   cors({
-    origin: "http://localhost:3000",
+    origin: ["http://localhost:3000" , "*"],
     credentials: true,
   })
 );
@@ -58,6 +58,7 @@ io.on("connection", (socket) => {
 
 // ✅ Start
 const PORT = process.env.PORT || 5000;
-server.listen(PORT, () => {
+
+server.listen(PORT, "0.0.0.0", () => {
   console.log(`🚀 Server is running on http://localhost:${PORT}`);
 });

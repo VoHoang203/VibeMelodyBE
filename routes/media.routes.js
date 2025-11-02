@@ -1,11 +1,10 @@
 // routes/media.routes.js
 import express from "express";
-import {
-  listArtistSongs,
-  createSong,
-  getAllSongs,
-  getSongById,
-} from "../controller/song.controller.js";
+
+import { listArtistSongs, createSong, getAllSongs, getSongDetail, addComment, toggleAlbumVisibility, deleteAlbum,
+  getSongById } from "../controller/song.controller.js";
+
+
 import {
   createAlbum,
   updateAlbum,
@@ -44,6 +43,22 @@ router.post(
 );
 
 router.get("/songs", listArtistSongs); // ?artistId=...&unassigned=true
+router.get("/all", getAllSongs); 
+router.get("/albums", getAllAlbums); 
+// POST create new album
+router.post("/albums", upload.single("coverImage"), createAlbum);
+
+// PATCH toggle visibility
+router.patch("/albums/:id/visibility", toggleAlbumVisibility);
+
+// DELETE album
+router.delete("/albums/:id", deleteAlbum);
+
+
+router.get("/songs/:id", getSongDetail);
+router.post("/songs/:id/like", toggleHideAlbum);
+router.post("/songs/:id/comment", addComment);
+
 
 // ALBUMS
 // form-data: imageFile + fields khác
