@@ -7,6 +7,7 @@ import cron from "node-cron";
 import morgan from "morgan";
 import connectDB from "./config/db.js";
 import albumUpdateRoutes from "./routes/media.routes.js";
+import chatRoute from "./routes/chat.routes.js"
 import bodyParser from "body-parser";
 dotenv.config();
 connectDB();
@@ -33,6 +34,7 @@ app.use(express.urlencoded({ extended: true, limit: "100mb" }));
 
 // ✅ Gắn route chính (chứa controller createSong)
 app.use("/api", albumUpdateRoutes);
+app.use("/api", chatRoute);
 
 // ✅ Root
 app.get("/", (req, res) => {

@@ -4,6 +4,7 @@ import { Album } from "../models/album.model.js";
 import { User } from "../models/user.model.js";
 import { uploadToCloudinary } from "../config/cloudinary.js";
 import { notify } from "../services/notify.service.js";
+import mongoose from "mongoose";
 
 /**
  * Helper: đảm bảo field có thể là 1 file hoặc mảng file → trả về mảng
@@ -254,5 +255,41 @@ export const deleteAlbum = async (req, res) => {
   } catch (err) {
     console.error("❌ Error in deleteAlbum:", err);
     res.status(500).json({ message: err.message });
+const isId = (v) => mongoose.Types.ObjectId.isValid(v);
+
+/**
+ * GET /songs?artistId=&albumId=&unassigned=true&q=
+ * - Không paginate, sort mới → cũ
+ * - Nếu có q: tìm theo title hoặc artist (regex, case-insensitive)
+ */
+export const getAllSongs = async (req, res, next) => {
+  try {
+    const { artistId, albumId, unassigned, q = "" } = req.query;
+
+    const filter = {};
+    if (artistId) {
+      if (!isId(artistId)) return res.status(400).json({ message: "Invalid artistId" });
+      filter.artistId = artistId;
+    }
+    if (albumId) {
+      if (!isId(albumId)) return res.status(400).json({ message: "Invalid albumId" });
+      filter.albumId = albumId;
+    }
+    if (String(unassigned) === "true") {
+      filter.albumId = null;
+    }
+    if (q.trim()) {
+      const rx = new RegExp(q.trim(), "i");
+      filter.$or = [{ title: rx }, { artist: rx }];
+    }
+
+    const songs = await Song.find(filter)
+      .sort({ createdAt: -1 })
+      .select("_id title artist artistId imageUrl audioUrl duration likesCount albumId createdAt")
+      .lean();
+
+    res.json(songs);
+  } catch (error) {
+    next(error);
   }
 };
