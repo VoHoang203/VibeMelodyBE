@@ -7,6 +7,7 @@ import cron from "node-cron";
 import morgan from "morgan";
 import connectDB from "./config/db.js";
 import albumUpdateRoutes from "./routes/media.routes.js";
+import chatRoute from "./routes/chat.routes.js"
 import bodyParser from "body-parser";
 dotenv.config();
 connectDB();
@@ -16,7 +17,7 @@ const app = express();
 // ✅ CORS
 app.use(
   cors({
-    origin: "http://localhost:3000",
+    origin: ["http://localhost:3000" , "*"],
     credentials: true,
   })
 );
@@ -35,6 +36,7 @@ app.use(express.urlencoded({ extended: true, limit: "100mb" }));
 app.use("/api", albumUpdateRoutes);
 app.use("/api", (await import("./routes/auth.route.js")).default);
 app.use("/api", (await import("./routes/payos.routes.js")).default);
+app.use("/api", chatRoute);
 
 // ✅ Root
 app.get("/", (req, res) => {
@@ -58,6 +60,7 @@ io.on("connection", (socket) => {
 
 // ✅ Start
 const PORT = process.env.PORT || 5000;
-server.listen(PORT, () => {
+
+server.listen(PORT, "0.0.0.0", () => {
   console.log(`🚀 Server is running on http://localhost:${PORT}`);
 });
