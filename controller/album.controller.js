@@ -3,6 +3,7 @@ import { Album } from "../models/album.model.js";
 import { User } from "../models/user.model.js";
 import { uploadToCloudinary } from "../config/cloudinary.js";
 import { notify } from "../services/notify.service.js";
+import mongoose from "mongoose";
 
 /**
  * POST /albums
@@ -17,10 +18,13 @@ export const createAlbum = async (req, res, next) => {
   try {
     const { artistId, artistName, title, releaseYear } = req.body;
     if (!artistId || !artistName || !title || !releaseYear) {
-      return res.status(400).json({ message: "Missing artistId/artistName/title/releaseYear" });
+      return res
+        .status(400)
+        .json({ message: "Missing artistId/artistName/title/releaseYear" });
     }
 
     if (!req.files?.imageFile) {
+      console.log("Please upload cover imageFile");
       return res.status(400).json({ message: "Please upload cover imageFile" });
     }
 
@@ -33,7 +37,10 @@ export const createAlbum = async (req, res, next) => {
     }
 
     // up ảnh cover
-    const coverUrl = await uploadToCloudinary(req.files.imageFile, "spotify_clone/covers");
+    const coverUrl = await uploadToCloudinary(
+      req.files.imageFile[0],
+      "spotify_clone/covers"
+    );
 
     const album = await Album.create({
       title,
@@ -44,16 +51,20 @@ export const createAlbum = async (req, res, next) => {
       songs: songIds, // giữ đúng thứ tự FE
     });
 
-    await User.findByIdAndUpdate(artistId, { $addToSet: { albums: album._id } });
+    await User.findByIdAndUpdate(artistId, {
+      $addToSet: { albums: album._id },
+    });
 
-    const artist = await User.findById(artistId).select("followers fullName imageUrl").lean();
+    const artist = await User.findById(artistId)
+      .select("followers fullName imageUrl")
+      .lean();
     const followerIds = artist?.followers || [];
     await Promise.all(
-      followerIds.map(uid =>
+      followerIds.map((uid) =>
         notify(uid, {
           content: `${artist.fullName} vừa phát hành album: "${album.title}"`,
           imageUrl: album.imageUrl,
-          meta: { type: "NEW_ALBUM", actorId: artistId, albumId: album._id }
+          meta: { type: "NEW_ALBUM", actorId: artistId, albumId: album._id },
         })
       )
     );
@@ -67,10 +78,14 @@ export const createAlbum = async (req, res, next) => {
 export const updateAlbum = async (req, res, next) => {
   try {
     const { albumId } = req.params;
-
+    console.log("Content-Type:", req.headers["content-type"]);
+    console.log("BODY:", req.body);
+    console.log("FILES:", req.files);
     let { title, artistName, artistId, releaseYear, imageUrl } = req.body;
     if (!title || !artistName || !artistId || !releaseYear) {
-      return res.status(400).json({ message: "Missing title/artistName/artistId/releaseYear" });
+      return res
+        .status(400)
+        .json({ message: "Missing title/artistName/artistId/releaseYear" });
     }
 
     // songIds có thể là JSON string
@@ -87,16 +102,19 @@ export const updateAlbum = async (req, res, next) => {
 
     // Upload cover nếu có file
     if (req.files?.imageFile) {
-      imageUrl = await uploadToCloudinary(req.files.imageFile, "spotify_clone/covers");
+      imageUrl = await uploadToCloudinary(
+        req.files.imageFile,
+        "spotify_clone/covers"
+      );
     }
     if (!imageUrl) imageUrl = album.imageUrl; // giữ ảnh cũ nếu không gửi mới
 
     // Tính phần chênh lệch songs để cập nhật albumId ở Song
-    const oldSongIds = (album.songs || []).map(id => String(id));
+    const oldSongIds = (album.songs || []).map((id) => String(id));
     const newSongIds = songIds.map(String);
 
-    const removed = oldSongIds.filter(id => !newSongIds.includes(id));
-    const added   = newSongIds.filter(id => !oldSongIds.includes(id));
+    const removed = oldSongIds.filter((id) => !newSongIds.includes(id));
+    const added = newSongIds.filter((id) => !oldSongIds.includes(id));
 
     // Gỡ albumId khỏi các bài bị loại
     if (removed.length) {
@@ -125,7 +143,7 @@ export const updateAlbum = async (req, res, next) => {
     const populated = await Album.findById(album._id).populate("songs");
     res.json(populated);
   } catch (err) {
-    console.error("updateAlbum error:", err);
+    console.error("updateAlbum error:", err.message);
     next(err);
   }
 };
@@ -152,9 +170,52 @@ export const toggleHideAlbum = async (req, res, next) => {
 
     if (!album) return res.status(404).json({ message: "Album not found" });
 
-    res.json({ message: hidden ? "Album has been hidden" : "Album is visible", album });
+    res.json({
+      message: hidden ? "Album has been hidden" : "Album is visible",
+      album,
+    });
   } catch (err) {
     console.error("toggleHideAlbum error:", err);
+    next(err);
+  }
+};
+const isId = (v) => mongoose.Types.ObjectId.isValid(v);
+
+export const listAlbumsByArtist = async (req, res, next) => {
+  try {
+    const { artistId, visibleOnly, q = "" } = req.query;
+    if (!artistId || !isId(artistId)) {
+      return res.status(400).json({ message: "artistId is required/invalid" });
+    }
+
+    const filter = { artistId };
+    if (visibleOnly === "true") filter.isHidden = false;
+    if (q.trim()) filter.title = new RegExp(q.trim(), "i");
+
+    const items = await Album.find(filter)
+      .sort({ createdAt: -1 })
+      .select("_id title artist artistId imageUrl releaseYear isHidden songs")
+      .lean();
+
+    res.json(items); // ← mảng thuần, không paginate
+  } catch (err) {
+    next(err);
+  }
+};
+
+export const getAlbumById = async (req, res, next) => {
+  try {
+    const { albumId } = req.params;
+    if (!isId(albumId))
+      return res.status(400).json({ message: "Invalid albumId" });
+
+    const album = await Album.findById(albumId)
+      .populate("songs", "_id title durationSec imageUrl")
+      .lean();
+
+    if (!album) return res.status(404).json({ message: "Album not found" });
+    res.json(album);
+  } catch (err) {
     next(err);
   }
 };

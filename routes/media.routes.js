@@ -5,6 +5,8 @@ import {
   createAlbum,
   updateAlbum,
   toggleHideAlbum,
+  listAlbumsByArtist,
+  getAlbumById
 } from "../controller/album.controller.js";
 import multer from "multer";
 import path from "path";
@@ -40,12 +42,18 @@ router.get("/songs", listArtistSongs); // ?artistId=...&unassigned=true
 // ALBUMS
 // form-data: imageFile + fields khác
 router.post("/albums", upload.fields([
-    { name: "imageFile", maxCount: 10 },
+    { name: "imageFile"},
   ]), createAlbum);
 
 // Cập nhật toàn bộ album (ghi đè mọi field, cả songs)
-router.put("/albums/:albumId", updateAlbum);
+router.put("/albums/:albumId", upload.fields([
+    { name: "imageFile"},
+  ]), updateAlbum);
 
 // Ẩn/hiện album
 router.patch("/albums/:albumId/hide", toggleHideAlbum);
+
+router.get("/albums", listAlbumsByArtist);
+router.get("/albums/:albumId", getAlbumById);   
+
 export default router;

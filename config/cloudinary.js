@@ -22,7 +22,7 @@ export async function uploadToCloudinary(file, folder = "spotify_clone") {
     });
     return res.secure_url;
   } catch (error) {
-    console.log("Error in uploadToCloudinary", error);
+    console.log("Error in uploadToCloudinary: ", error.message);
     throw new Error("Error uploading to cloudinary");
   }
 }
