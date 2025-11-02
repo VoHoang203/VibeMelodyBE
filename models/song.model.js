@@ -10,9 +10,13 @@ const songSchema = new mongoose.Schema(
       type: String,
       required: true,
     },
+    artistId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "User",
+      required: true,
+    },
     imageUrl: {
       type: String,
-      required: true,
     },
     audioUrl: {
       type: String,
@@ -27,6 +31,8 @@ const songSchema = new mongoose.Schema(
       ref: "Album",
       required: false,
     },
+    comments: [{ type: mongoose.Schema.Types.ObjectId, ref: "Comment" }],
+    likesCount: { type: Number, default: 0 },
   },
   { timestamps: true }
 );
