@@ -1,6 +1,16 @@
 // routes/media.routes.js
 import express from "express";
-import { listArtistSongs, createSong, getAllSongs, getSongDetail, addComment, getAllAlbums, toggleAlbumVisibility, deleteAlbum } from "../controller/song.controller.js";
+
+import {
+  listArtistSongs,
+  createSong,
+  getAllSongs,
+  getSongDetail,
+  addComment,
+  toggleAlbumVisibility,
+  deleteAlbum,
+  getSongById,
+} from "../controller/song.controller.js";
 
 import {
   createAlbum,
@@ -8,7 +18,7 @@ import {
   toggleHideAlbum,
   listAlbumsByArtist,
   getAlbumById,
-  getAllAlbums
+  getAllAlbums,
 } from "../controller/album.controller.js";
 import multer from "multer";
 import path from "path";
@@ -40,8 +50,8 @@ router.post(
 );
 
 router.get("/songs", listArtistSongs); // ?artistId=...&unassigned=true
-router.get("/all", getAllSongs); 
-router.get("/albums", getAllAlbums); 
+router.get("/all", getAllSongs);
+router.get("/albums", getAllAlbums);
 // POST create new album
 router.post("/albums", upload.single("coverImage"), createAlbum);
 
@@ -51,31 +61,31 @@ router.patch("/albums/:id/visibility", toggleAlbumVisibility);
 // DELETE album
 router.delete("/albums/:id", deleteAlbum);
 
-
 router.get("/songs/:id", getSongDetail);
 router.post("/songs/:id/like", toggleHideAlbum);
 router.post("/songs/:id/comment", addComment);
 
-
 // ALBUMS
 // form-data: imageFile + fields khác
-router.post("/albums", upload.fields([
-    { name: "imageFile"},
-  ]), createAlbum);
+router.post("/albums", upload.fields([{ name: "imageFile" }]), createAlbum);
 
 // Cập nhật toàn bộ album (ghi đè mọi field, cả songs)
-router.put("/albums/:albumId", upload.fields([
-    { name: "imageFile"},
-  ]), updateAlbum);
+router.put(
+  "/albums/:albumId",
+  upload.fields([{ name: "imageFile" }]),
+  updateAlbum
+);
 
 // Ẩn/hiện album
 router.patch("/albums/:albumId/hide", toggleHideAlbum);
 
 router.get("/albums", listAlbumsByArtist);
-router.get("/albums/:albumId", getAlbumById);   
+router.get("/albums/:albumId", getAlbumById);
 // SONGS
-router.get("/allsongs", getAllSongs);               
+router.get("/allsongs", getAllSongs);
 
 // ALBUMS
-router.get("/allalbums", getAllAlbums);  
+router.get("/allalbums", getAllAlbums);
+
+router.get("/songs/:id", getSongById);
 export default router;

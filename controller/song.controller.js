@@ -4,6 +4,7 @@ import { Album } from "../models/album.model.js";
 import { User } from "../models/user.model.js";
 import { uploadToCloudinary } from "../config/cloudinary.js";
 import { notify } from "../services/notify.service.js";
+import { Comment } from "../models/comment.model.js"; // giả định bạn có model này
 import mongoose from "mongoose";
 
 /**
@@ -17,19 +18,7 @@ function toArray(v) {
 /**
  * POST /songs
  */
-export const getAllSongs = async (req, res, next) => {
-  try {
-    const songs = await Song.find({})
-      .populate("artistId", "name") // nếu muốn hiển thị tên nghệ sĩ
-      .populate("albumId", "title") // nếu muốn kèm thông tin album
-      .sort({ createdAt: -1 });
 
-    res.status(200).json(songs);
-  } catch (error) {
-    console.error("❌ Error in getAllSongs:", error);
-    res.status(500).json({ message: error.message });
-  }
-};
 
 export const createSong = async (req, res) => {
   try {
@@ -254,7 +243,9 @@ export const deleteAlbum = async (req, res) => {
     res.json({ message: "Đã xóa album thành công" });
   } catch (err) {
     console.error("❌ Error in deleteAlbum:", err);
-    res.status(500).json({ message: err.message });
+    res.status(500).json({ message: err.message })
+  }
+}
 const isId = (v) => mongoose.Types.ObjectId.isValid(v);
 
 /**
@@ -293,3 +284,38 @@ export const getAllSongs = async (req, res, next) => {
     next(error);
   }
 };
+
+
+/**
+ * GET /songs/:id
+ * Trả: { song, artist, comments }
+ * - song: thông tin bài hát
+ * - artist: thông tin nghệ sĩ (từ song.artistId)
+ * - comments: list bình luận (mới → cũ), kèm user của comment
+ */
+export const getSongById = async (req, res, next) => {
+  try {
+    const { id } = req.params;
+    if (!isId(id)) return res.status(400).json({ message: "Invalid song id" });
+
+    const song = await Song.findById(id).lean();
+    if (!song) return res.status(404).json({ message: "Song not found" });
+
+    // lấy song.artistId -> artist
+    const artistPromise = User.findById(song.artistId)
+      .select("_id fullName username imageUrl clerkId")
+      .lean();
+
+    // comments theo songId, populate user
+    const commentsPromise = Comment.find({ songId: id })
+      .sort({ createdAt: -1 })
+      .populate("userId", "_id fullName username imageUrl clerkId")
+      .lean();
+
+    const [artist, comments] = await Promise.all([artistPromise, commentsPromise]);
+
+    return res.json({ song, artist, comments });
+  } catch (err) {
+    next(err);
+  }
+}
