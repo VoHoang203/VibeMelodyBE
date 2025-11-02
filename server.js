@@ -33,6 +33,8 @@ app.use(express.urlencoded({ extended: true, limit: "100mb" }));
 
 // ✅ Gắn route chính (chứa controller createSong)
 app.use("/api", albumUpdateRoutes);
+app.use("/api", (await import("./routes/auth.route.js")).default);
+app.use("/api", (await import("./routes/payos.routes.js")).default);
 
 // ✅ Root
 app.get("/", (req, res) => {
