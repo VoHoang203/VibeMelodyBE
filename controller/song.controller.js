@@ -16,13 +16,28 @@ function toArray(v) {
 /**
  * POST /songs
  */
+export const getAllSongs = async (req, res, next) => {
+  try {
+    const songs = await Song.find({})
+      .populate("artistId", "name") // nếu muốn hiển thị tên nghệ sĩ
+      .populate("albumId", "title") // nếu muốn kèm thông tin album
+      .sort({ createdAt: -1 });
+
+    res.status(200).json(songs);
+  } catch (error) {
+    console.error("❌ Error in getAllSongs:", error);
+    res.status(500).json({ message: error.message });
+  }
+};
+
 export const createSong = async (req, res) => {
   try {
     console.log("Content-Type:", req.headers["content-type"]);
     console.log("BODY:", req.body);
     console.log("FILES:", req.files);
     const { artistId, artistName, albumId } = req.body;
-
+    console.log(artistId);
+    
     if (!artistId || !artistName)
       return res.status(400).json({ message: "Missing artistId / artistName" });
 
@@ -99,5 +114,145 @@ export const listArtistSongs = async (req, res, next) => {
   } catch (e) {
     next(e);
     res.status(500).json({ message: e.message });
+  }
+};
+
+export const getSongDetail = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const song = await Song.findById(id);
+    if (!song) return res.status(404).json({ message: "Song not found" });
+    res.json(song);
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+};
+
+// LIKE / UNLIKE 1 BÀI HÁT
+export const toggleLikeSong = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const song = await Song.findById(id);
+    if (!song) return res.status(404).json({ message: "Song not found" });
+
+    song.likesCount = (song.likesCount || 0) + 1;
+    await song.save();
+
+    res.json({ message: "Liked", likesCount: song.likesCount });
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+};
+
+// THÊM BÌNH LUẬN
+export const addComment = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { userName, content } = req.body;
+
+    const song = await Song.findById(id);
+    if (!song) return res.status(404).json({ message: "Song not found" });
+
+    const newComment = {
+      userName: userName || "Anonymous",
+      content,
+      createdAt: new Date(),
+    };
+
+    song.comments.push(newComment);
+    await song.save();
+
+    res.json({ message: "Comment added", comments: song.comments });
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+};
+/**
+ * GET /albums
+ * → Lấy danh sách tất cả album, có kèm thông tin bài hát
+ */
+export const getAllAlbums = async (req, res) => {
+  try {
+    const albums = await Album.find({})
+      .populate("songs", "title artist imageUrl duration audioUrl") // lấy danh sách bài hát
+      .populate("artistId", "name") // nếu muốn có thông tin nghệ sĩ
+      .sort({ createdAt: -1 });
+
+    res.status(200).json(albums);
+  } catch (error) {
+    console.error("❌ Error in getAllAlbums:", error);
+    res.status(500).json({ message: error.message });
+  }
+};
+
+
+
+export const createAlbum = async (req, res) => {
+  try {
+    const { title, artistId, artistName, year } = req.body;
+
+    if (!title || !artistId || !artistName)
+      return res.status(400).json({ message: "Thiếu thông tin bắt buộc" });
+
+    let coverImage = null;
+    if (req.file) {
+      coverImage = await uploadToCloudinary(req.file, "spotify_clone/albums");
+    }
+
+    const album = await Album.create({
+      title,
+      artistId,
+      artistName,
+      year,
+      coverImage,
+      songs: [],
+      visible: true,
+    });
+
+    res.status(201).json(album);
+  } catch (err) {
+    console.error("❌ Error in createAlbum:", err);
+    res.status(500).json({ message: err.message });
+  }
+};
+
+/**
+ * PATCH /albums/:id/visibility
+ * → Ẩn / hiện album
+ */
+export const toggleAlbumVisibility = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const album = await Album.findById(id);
+    if (!album) return res.status(404).json({ message: "Album không tồn tại" });
+
+    album.visible = !album.visible;
+    await album.save();
+
+    res.json({ message: "Cập nhật thành công", album });
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+};
+
+/**
+ * DELETE /albums/:id
+ * → Xóa album và cập nhật lại các bài hát liên quan
+ */
+export const deleteAlbum = async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    const album = await Album.findById(id);
+    if (!album) return res.status(404).json({ message: "Album không tồn tại" });
+
+    // Bỏ liên kết album trong các bài hát
+    await Song.updateMany({ albumId: id }, { $unset: { albumId: "" } });
+    await Album.findByIdAndDelete(id);
+
+    res.json({ message: "Đã xóa album thành công" });
+  } catch (err) {
+    console.error("❌ Error in deleteAlbum:", err);
+    res.status(500).json({ message: err.message });
   }
 };
