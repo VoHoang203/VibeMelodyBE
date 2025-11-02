@@ -1,12 +1,13 @@
 // routes/media.routes.js
 import express from "express";
-import { listArtistSongs, createSong } from "../controller/song.controller.js";
+import { listArtistSongs, createSong, getAllSongs } from "../controller/song.controller.js";
 import {
   createAlbum,
   updateAlbum,
   toggleHideAlbum,
   listAlbumsByArtist,
-  getAlbumById
+  getAlbumById,
+  getAllAlbums
 } from "../controller/album.controller.js";
 import multer from "multer";
 import path from "path";
@@ -55,5 +56,9 @@ router.patch("/albums/:albumId/hide", toggleHideAlbum);
 
 router.get("/albums", listAlbumsByArtist);
 router.get("/albums/:albumId", getAlbumById);   
+// SONGS
+router.get("/allsongs", getAllSongs);               
 
+// ALBUMS
+router.get("/allalbums", getAllAlbums);  
 export default router;

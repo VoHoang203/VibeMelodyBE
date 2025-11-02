@@ -219,3 +219,34 @@ export const getAlbumById = async (req, res, next) => {
     next(err);
   }
 };
+
+export const getAllAlbums = async (req, res, next) => {
+  try {
+    const { artistId, visibleOnly, q = "" } = req.query;
+
+    const filter = {};
+    if (artistId) {
+      if (!isId(artistId))
+        return res.status(400).json({ message: "Invalid artistId" });
+      filter.artistId = artistId;
+    }
+    if (visibleOnly === "true") {
+      filter.isHidden = false;
+    }
+    if (q.trim()) {
+      const rx = new RegExp(q.trim(), "i");
+      filter.$or = [{ title: rx }, { artist: rx }];
+    }
+
+    const albums = await Album.find(filter)
+      .sort({ createdAt: -1 })
+      .select(
+        "_id title artist artistId imageUrl releaseYear isHidden songs createdAt"
+      )
+      .lean();
+
+    res.json(albums);
+  } catch (error) {
+    next(error);
+  }
+};
