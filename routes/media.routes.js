@@ -1,13 +1,18 @@
 // routes/media.routes.js
 import express from "express";
-import { listArtistSongs, createSong, getAllSongs } from "../controller/song.controller.js";
+import {
+  listArtistSongs,
+  createSong,
+  getAllSongs,
+  getSongById,
+} from "../controller/song.controller.js";
 import {
   createAlbum,
   updateAlbum,
   toggleHideAlbum,
   listAlbumsByArtist,
   getAlbumById,
-  getAllAlbums
+  getAllAlbums,
 } from "../controller/album.controller.js";
 import multer from "multer";
 import path from "path";
@@ -42,23 +47,25 @@ router.get("/songs", listArtistSongs); // ?artistId=...&unassigned=true
 
 // ALBUMS
 // form-data: imageFile + fields khác
-router.post("/albums", upload.fields([
-    { name: "imageFile"},
-  ]), createAlbum);
+router.post("/albums", upload.fields([{ name: "imageFile" }]), createAlbum);
 
 // Cập nhật toàn bộ album (ghi đè mọi field, cả songs)
-router.put("/albums/:albumId", upload.fields([
-    { name: "imageFile"},
-  ]), updateAlbum);
+router.put(
+  "/albums/:albumId",
+  upload.fields([{ name: "imageFile" }]),
+  updateAlbum
+);
 
 // Ẩn/hiện album
 router.patch("/albums/:albumId/hide", toggleHideAlbum);
 
 router.get("/albums", listAlbumsByArtist);
-router.get("/albums/:albumId", getAlbumById);   
+router.get("/albums/:albumId", getAlbumById);
 // SONGS
-router.get("/allsongs", getAllSongs);               
+router.get("/allsongs", getAllSongs);
 
 // ALBUMS
-router.get("/allalbums", getAllAlbums);  
+router.get("/allalbums", getAllAlbums);
+
+router.get("/songs/:id", getSongById);
 export default router;
