@@ -10,6 +10,8 @@ import {
   toggleAlbumVisibility,
   deleteAlbum,
   getSongById,
+  updateSong,
+  deleteSong,
 } from "../controller/song.controller.js";
 
 import {
@@ -64,6 +66,10 @@ router.delete("/albums/:id", deleteAlbum);
 router.get("/songs/:id", getSongDetail);
 router.post("/songs/:id/like", toggleHideAlbum);
 router.post("/songs/:id/comment", addComment);
+router.patch("/songs/:id", updateSong);
+
+// Xóa bài hát
+router.delete("/songs/:id", deleteSong);
 
 // ALBUMS
 // form-data: imageFile + fields khác
