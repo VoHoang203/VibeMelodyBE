@@ -323,3 +323,49 @@ export const getSongById = async (req, res, next) => {
     res.status(500).json({ message: err.message });
   }
 };
+
+
+/**
+ * PATCH /songs/:id
+ * → Cập nhật thông tin bài hát
+ */
+export const updateSong = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { title, duration, artistName, albumId } = req.body;
+
+    const updated = await Song.findByIdAndUpdate(
+      id,
+      { title, duration, artist: artistName, albumId },
+      { new: true }
+    );
+
+    if (!updated) return res.status(404).json({ message: "Song not found" });
+    res.json({ message: "Cập nhật thành công", song: updated });
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+};
+
+/**
+ * DELETE /songs/:id
+ * → Xóa bài hát
+ */
+export const deleteSong = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const deleted = await Song.findByIdAndDelete(id);
+    if (!deleted) return res.status(404).json({ message: "Song not found" });
+
+    // Nếu bài hát thuộc album nào thì gỡ ra
+    if (deleted.albumId) {
+      await Album.findByIdAndUpdate(deleted.albumId, {
+        $pull: { songs: deleted._id },
+      });
+    }
+
+    res.json({ message: "Đã xóa bài hát thành công" });
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+};

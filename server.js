@@ -39,6 +39,7 @@ app.use("/api", albumUpdateRoutes);
 app.use("/api", (await import("./routes/auth.route.js")).default);
 app.use("/api", (await import("./routes/payos.routes.js")).default);
 app.use("/api", chatRoute);
+app.use("/api/artist", (await import("./routes/artist.route.js")).default);
 
 // ✅ Root
 app.get("/", (req, res) => {
