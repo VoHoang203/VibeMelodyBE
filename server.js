@@ -9,6 +9,8 @@ import connectDB from "./config/db.js";
 import albumUpdateRoutes from "./routes/media.routes.js";
 import chatRoute from "./routes/chat.routes.js"
 import bodyParser from "body-parser";
+import { initializeSocket } from "./sockets/socket.js";
+import { createServer } from "http";
 dotenv.config();
 connectDB();
 
@@ -45,18 +47,7 @@ app.get("/", (req, res) => {
 
 // ✅ Socket.io
 const server = http.createServer(app);
-const io = new SocketIOServer(server, {
-  cors: {
-    origin: "*",
-    methods: ["GET", "POST"],
-  },
-});
-io.on("connection", (socket) => {
-  console.log("🟢 New client connected:", socket.id);
-  socket.on("disconnect", () =>
-    console.log(" Client disconnected:", socket.id)
-  );
-});
+initializeSocket(server);
 
 // ✅ Start
 const PORT = process.env.PORT || 5000;
