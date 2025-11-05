@@ -19,7 +19,6 @@ function toArray(v) {
  * POST /songs
  */
 
-
 export const createSong = async (req, res) => {
   try {
     console.log("Content-Type:", req.headers["content-type"]);
@@ -27,7 +26,7 @@ export const createSong = async (req, res) => {
     console.log("FILES:", req.files);
     const { artistId, artistName, albumId } = req.body;
     console.log(artistId);
-    
+
     if (!artistId || !artistName)
       return res.status(400).json({ message: "Missing artistId / artistName" });
 
@@ -175,8 +174,6 @@ export const getAllAlbums = async (req, res) => {
   }
 };
 
-
-
 export const createAlbum = async (req, res) => {
   try {
     const { title, artistId, artistName, year } = req.body;
@@ -243,9 +240,9 @@ export const deleteAlbum = async (req, res) => {
     res.json({ message: "Đã xóa album thành công" });
   } catch (err) {
     console.error("❌ Error in deleteAlbum:", err);
-    res.status(500).json({ message: err.message })
+    res.status(500).json({ message: err.message });
   }
-}
+};
 const isId = (v) => mongoose.Types.ObjectId.isValid(v);
 
 /**
@@ -259,11 +256,13 @@ export const getAllSongs = async (req, res, next) => {
 
     const filter = {};
     if (artistId) {
-      if (!isId(artistId)) return res.status(400).json({ message: "Invalid artistId" });
+      if (!isId(artistId))
+        return res.status(400).json({ message: "Invalid artistId" });
       filter.artistId = artistId;
     }
     if (albumId) {
-      if (!isId(albumId)) return res.status(400).json({ message: "Invalid albumId" });
+      if (!isId(albumId))
+        return res.status(400).json({ message: "Invalid albumId" });
       filter.albumId = albumId;
     }
     if (String(unassigned) === "true") {
@@ -276,7 +275,9 @@ export const getAllSongs = async (req, res, next) => {
 
     const songs = await Song.find(filter)
       .sort({ createdAt: -1 })
-      .select("_id title artist artistId imageUrl audioUrl duration likesCount albumId createdAt")
+      .select(
+        "_id title artist artistId imageUrl audioUrl duration likesCount albumId createdAt"
+      )
       .lean();
 
     res.json(songs);
@@ -284,7 +285,6 @@ export const getAllSongs = async (req, res, next) => {
     next(error);
   }
 };
-
 
 /**
  * GET /songs/:id
@@ -302,20 +302,24 @@ export const getSongById = async (req, res, next) => {
     if (!song) return res.status(404).json({ message: "Song not found" });
 
     // lấy song.artistId -> artist
-    const artistPromise = User.findById(song.artistId)
-      .select("_id fullName username imageUrl clerkId")
+    const artistPromise = await User.findById(song.artistId)
+      .select("_id fullName username imageUrl")
       .lean();
 
     // comments theo songId, populate user
-    const commentsPromise = Comment.find({ songId: id })
+    const commentsPromise = await Comment.find({ songId: id })
       .sort({ createdAt: -1 })
-      .populate("userId", "_id fullName username imageUrl clerkId")
+      .populate("userId", "_id fullName username imageUrl")
       .lean();
 
-    const [artist, comments] = await Promise.all([artistPromise, commentsPromise]);
+    const [artist, comments] = await Promise.all([
+      artistPromise,
+      commentsPromise,
+    ]);
 
     return res.json({ song, artist, comments });
   } catch (err) {
-    next(err);
+    console.error("❌ Error in deleteAlbum:", err);
+    res.status(500).json({ message: err.message });
   }
-}
+};

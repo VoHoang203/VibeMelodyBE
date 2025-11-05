@@ -3,7 +3,7 @@ import mongoose from "mongoose";
 const likeSchema = new mongoose.Schema(
   {
     user:   { type: mongoose.Schema.Types.ObjectId, ref: "User", required: true },
-    targetType: { type: String, enum: ["song","album"], required: true },
+    targetType: { type: String, enum: ["song","album","comment"], required: true },
     targetId:   { type: mongoose.Schema.Types.ObjectId, required: true }
   },
   { timestamps: true }
