@@ -8,24 +8,25 @@ import { Message } from "../models/message.model.js";
  */
 export const getAllUsers = async (req, res, next) => {
   try {
-    const currentUserId = req.auth?.userId; // Clerk user id (string)
+    const currentUserId = req.auth?.userId;
     const { q = "" } = req.query;
 
     const filter = {};
-    if (currentUserId) filter.clerkId = { $ne: currentUserId };
+    if (currentUserId) filter._id = { $ne: currentUserId };
     if (q.trim()) {
       const rx = new RegExp(q.trim(), "i");
       filter.$or = [{ fullName: rx }, { username: rx }, { email: rx }];
     }
 
     const users = await User.find(filter)
-      .select("_id clerkId fullName username imageUrl email createdAt")
+      .select("_id fullName username imageUrl email createdAt")
       .sort({ createdAt: -1 })
       .lean();
 
     res.status(200).json(users);
   } catch (error) {
-    next(error);
+    console.log({ message: error.message })
+    res.status(500).json({ message: error.message });
   }
 };
 
@@ -36,8 +37,8 @@ export const getAllUsers = async (req, res, next) => {
  */
 export const getMessages = async (req, res, next) => {
   try {
-    const myId = req.auth?.userId;      // Clerk user id (string)
-    const { userId } = req.params;      // Clerk user id (string)
+    const myId = req.auth?.userId; // Clerk user id (string)
+    const { userId } = req.params; // Clerk user id (string)
 
     if (!myId || !userId) {
       return res.status(400).json({ message: "Missing user ids" });

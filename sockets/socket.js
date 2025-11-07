@@ -2,7 +2,7 @@ import { Server } from "socket.io";
 import { Message } from "../models/message.model.js";
 
 let ioRef = null;
-const userSockets = new Map();   // { userId: socketId }
+const userSockets = new Map(); // { userId: socketId }
 const userActivities = new Map(); // { userId: activity }
 
 export const initializeSocket = (server) => {
@@ -19,6 +19,7 @@ export const initializeSocket = (server) => {
       io.emit("user_connected", String(userId));
       socket.emit("users_online", Array.from(userSockets.keys()));
       io.emit("activities", Array.from(userActivities.entries()));
+      console.log(userActivities);
     });
 
     socket.on("update_activity", ({ userId, activity }) => {
@@ -31,7 +32,8 @@ export const initializeSocket = (server) => {
         const message = await Message.create({ senderId, receiverId, content });
 
         const receiverSocketId = userSockets.get(String(receiverId));
-        if (receiverSocketId) io.to(receiverSocketId).emit("receive_message", message);
+        if (receiverSocketId)
+          io.to(receiverSocketId).emit("receive_message", message);
 
         socket.emit("message_sent", message);
       } catch (err) {

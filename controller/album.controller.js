@@ -174,9 +174,11 @@ export const toggleHideAlbum = async (req, res, next) => {
       message: hidden ? "Album has been hidden" : "Album is visible",
       album,
     });
-  } catch (err) {
-    console.error("toggleHideAlbum error:", err);
-    next(err);
+  } catch (error) {
+    console.error("toggleHideAlbum error:", error);
+    return res
+      .status(500)
+      .json({ message: error.message || "Internal Server Error" });
   }
 };
 const isId = (v) => mongoose.Types.ObjectId.isValid(v);
@@ -197,9 +199,11 @@ export const listAlbumsByArtist = async (req, res, next) => {
       .select("_id title artist artistId imageUrl releaseYear isHidden songs")
       .lean();
 
-    res.json(items); // ← mảng thuần, không paginate
+    res.json(items);
   } catch (err) {
-    next(err);
+    return res
+      .status(500)
+      .json({ message: err.message || "Internal Server Error" });
   }
 };
 
@@ -220,19 +224,22 @@ export const getAlbumById = async (req, res, next) => {
   }
 };
 
-export const getAllAlbums = async (req, res, next) => {
-  try {
-    const { artistId, visibleOnly, q = "" } = req.query;
 
-    const filter = {};
+export const getAllAlbums = async (req, res) => {
+  try {
+    const { artistId, q = "" } = req.query;
+
+    const filter = {
+      isHidden: false,
+    };
+
     if (artistId) {
-      if (!isId(artistId))
+      if (!isId(artistId)) {
         return res.status(400).json({ message: "Invalid artistId" });
+      }
       filter.artistId = artistId;
     }
-    if (visibleOnly === "true") {
-      filter.isHidden = false;
-    }
+
     if (q.trim()) {
       const rx = new RegExp(q.trim(), "i");
       filter.$or = [{ title: rx }, { artist: rx }];
@@ -245,8 +252,11 @@ export const getAllAlbums = async (req, res, next) => {
       )
       .lean();
 
-    res.json(albums);
+    return res.json(albums);
   } catch (error) {
-    next(error);
+    console.error("getAllAlbums error:", error);
+    return res
+      .status(500)
+      .json({ message: error.message || "Internal Server Error" });
   }
 };

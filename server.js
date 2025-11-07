@@ -10,6 +10,10 @@ import albumUpdateRoutes from "./routes/media.routes.js";
 import chatRoute from "./routes/chat.routes.js"
 import bodyParser from "body-parser";
 import swaggerDocs from "./config/swagger.js";
+import { initializeSocket } from "./sockets/socket.js";
+import commentsRouter from "./routes/comment.routes.js";
+import likeRoutes from "./routes/like.routes.js";
+
 dotenv.config();
 connectDB();
 
@@ -39,6 +43,9 @@ app.use("/api", (await import("./routes/auth.route.js")).default);
 app.use("/api", (await import("./routes/payos.routes.js")).default);
 app.use("/api", chatRoute);
 swaggerDocs(app);
+app.use("/api/artist", (await import("./routes/artist.route.js")).default);
+app.use("/api/songs/:songId/comments", commentsRouter);
+app.use("/api", likeRoutes);
 // ✅ Root
 app.get("/", (req, res) => {
   res.send("API is running...");
@@ -46,18 +53,7 @@ app.get("/", (req, res) => {
 
 // ✅ Socket.io
 const server = http.createServer(app);
-const io = new SocketIOServer(server, {
-  cors: {
-    origin: "*",
-    methods: ["GET", "POST"],
-  },
-});
-io.on("connection", (socket) => {
-  console.log("🟢 New client connected:", socket.id);
-  socket.on("disconnect", () =>
-    console.log(" Client disconnected:", socket.id)
-  );
-});
+initializeSocket(server);
 
 // ✅ Start
 const PORT = process.env.PORT || 5000;

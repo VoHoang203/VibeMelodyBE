@@ -10,6 +10,8 @@ import {
   toggleAlbumVisibility,
   deleteAlbum,
   getSongById,
+  updateSong,
+  deleteSong,
 } from "../controller/song.controller.js";
 
 import {
@@ -121,10 +123,193 @@ router.get("/songs", listArtistSongs); // ?artistId=...&unassigned=true
  *         description: Danh sách tất cả bài hát
  */
 router.get("/all", getAllSongs);
+/**
+ * @swagger
+ * /songs/{id}:
+ *   patch:
+ *     summary: Cập nhật thông tin bài hát
+ *     description: Cập nhật thông tin của bài hát theo ID.
+ *     tags: [Songs]
+ *     parameters:
+ *       - name: id
+ *         in: path
+ *         required: true
+ *         description: ID của bài hát cần cập nhật
+ *         schema:
+ *           type: string
+ *           example: 6738c5f2a03ab4c47bf0a1d2
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               title:
+ *                 type: string
+ *                 example: Em của ngày hôm qua
+ *               artist:
+ *                 type: string
+ *                 example: Sơn Tùng M-TP
+ *               genre:
+ *                 type: string
+ *                 example: Pop
+ *               duration:
+ *                 type: number
+ *                 example: 240
+ *     responses:
+ *       200:
+ *         description: Cập nhật thành công
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 message:
+ *                   type: string
+ *                   example: Song updated successfully
+ *       404:
+ *         description: Không tìm thấy bài hát
+ *       500:
+ *         description: Lỗi server
+ */
+router.patch("/songs/:id", updateSong);
 
-router.get("/albums", getAllAlbums);
+
+// Xóa bài hát
+/**
+ * @swagger
+ * /songs/{id}:
+ *   delete:
+ *     summary: Xóa bài hát
+ *     description: Xóa một bài hát khỏi hệ thống theo ID.
+ *     tags: [Songs]
+ *     parameters:
+ *       - name: id
+ *         in: path
+ *         required: true
+ *         description: ID của bài hát cần xóa
+ *         schema:
+ *           type: string
+ *           example: 6738c5f2a03ab4c47bf0a1d2
+ *     responses:
+ *       200:
+ *         description: Xóa bài hát thành công
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 message:
+ *                   type: string
+ *                   example: Song deleted successfully
+ *       404:
+ *         description: Không tìm thấy bài hát
+ *       500:
+ *         description: Lỗi server
+ */
+router.delete("/songs/:id", deleteSong);
+
+
+// ALBUMS
+/**
+ * @swagger
+ * /allalbums:
+ *   get:
+ *     summary: Lấy danh sách tất cả album
+ *     description: Trả về danh sách các album hiện có trong hệ thống.
+ *     tags: [Albums]
+ *     responses:
+ *       200:
+ *         description: Danh sách album
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: array
+ *               items:
+ *                 type: object
+ *                 properties:
+ *                   _id:
+ *                     type: string
+ *                     example: 6738c5f2a03ab4c47bf0a1d2
+ *                   title:
+ *                     type: string
+ *                     example: Sky Tour
+ *                   artist:
+ *                     type: string
+ *                     example: Sơn Tùng M-TP
+ *                   coverImage:
+ *                     type: string
+ *                     example: https://example.com/skytour.jpg
+ *                   createdAt:
+ *                     type: string
+ *                     example: 2025-11-07T08:20:00.000Z
+ *                   updatedAt:
+ *                     type: string
+ *                     example: 2025-11-07T08:20:00.000Z
+ *       500:
+ *         description: Lỗi server
+ */
+router.get("/allalbums", getAllAlbums);
+
 // POST create new album
+/**
+ * @swagger
+ * /albums:
+ *   post:
+ *     summary: Tạo album mới
+ *     description: Tạo album mới cùng ảnh bìa (upload cover image).
+ *     tags: [Albums]
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         multipart/form-data:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - title
+ *               - artist
+ *               - coverImage
+ *             properties:
+ *               title:
+ *                 type: string
+ *                 example: Chúng ta của hiện tại
+ *               artist:
+ *                 type: string
+ *                 example: Sơn Tùng M-TP
+ *               coverImage:
+ *                 type: string
+ *                 format: binary
+ *                 description: Ảnh bìa album
+ *     responses:
+ *       201:
+ *         description: Tạo album thành công
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 message:
+ *                   type: string
+ *                   example: Album created successfully
+ *                 album:
+ *                   type: object
+ *                   properties:
+ *                     _id:
+ *                       type: string
+ *                     title:
+ *                       type: string
+ *                     artist:
+ *                       type: string
+ *                     coverImage:
+ *                       type: string
+ *       400:
+ *         description: Thiếu dữ liệu hoặc file không hợp lệ
+ *       500:
+ *         description: Lỗi server
+ */
 router.post("/albums", upload.single("coverImage"), createAlbum);
+
 /**
  * @swagger
  * /api/albums/{id}/visibility:
@@ -208,6 +393,7 @@ router.post("/songs/:id/like", toggleHideAlbum);
 router.post("/songs/:id/comment", addComment);
 
 // ALBUMS
+
 // form-data: imageFile + fields khác
 router.post("/albums", upload.fields([{ name: "imageFile" }]), createAlbum);
 
@@ -306,9 +492,65 @@ router.get("/albums/:albumId", getAlbumById);
  *         description: Danh sách tất cả bài hát
  */
 router.get("/allsongs", getAllSongs);
-
-// ALBUMS
-router.get("/allalbums", getAllAlbums);
-
-router.get("/songs/:id", getSongById);
+/**
+ * @swagger
+ * /songs/main/{id}:
+ *   get:
+ *     summary: Lấy thông tin chi tiết bài hát
+ *     description: Trả về thông tin chi tiết của một bài hát dựa trên ID.
+ *     tags: [Songs]
+ *     parameters:
+ *       - name: id
+ *         in: path
+ *         required: true
+ *         description: ID của bài hát cần lấy
+ *         schema:
+ *           type: string
+ *           example: 6738c5f2a03ab4c47bf0a1d2
+ *     responses:
+ *       200:
+ *         description: Thông tin bài hát
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 _id:
+ *                   type: string
+ *                   example: 6738c5f2a03ab4c47bf0a1d2
+ *                 title:
+ *                   type: string
+ *                   example: Nơi này có anh
+ *                 artist:
+ *                   type: string
+ *                   example: Sơn Tùng M-TP
+ *                 album:
+ *                   type: string
+ *                   example: MTP Collection
+ *                 duration:
+ *                   type: number
+ *                   example: 215
+ *                 genre:
+ *                   type: string
+ *                   example: Pop
+ *                 createdAt:
+ *                   type: string
+ *                   example: 2025-11-07T07:12:43.120Z
+ *                 updatedAt:
+ *                   type: string
+ *                   example: 2025-11-07T07:12:43.120Z
+ *       404:
+ *         description: Không tìm thấy bài hát
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 message:
+ *                   type: string
+ *                   example: Song not found
+ *       500:
+ *         description: Lỗi server
+ */
+router.get("/songs/main/:id", getSongById);
 export default router;
