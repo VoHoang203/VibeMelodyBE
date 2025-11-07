@@ -5,11 +5,29 @@ import { notify } from "../services/notify.service.js";
 
 export const likeSong = async (req, res, next) => {
   try {
-    const me = req.user;
+    const me = req.user; // từ middleware
     const { songId } = req.params;
+    if (!mongoose.Types.ObjectId.isValid(songId)) {
+      return res.status(400).json({ message: "Invalid songId" });
+    }
 
-    const created = await Like.create({ user: me._id, targetType: "song", targetId: songId }).catch(() => null);
-    if (!created) return res.status(200).json({ message: "Đã thích trước đó" });
+    // unique index sẽ ngăn trùng
+    const created = await Like.create({
+      user: me._id,
+      targetType: "song",
+      targetId: songId,
+    }).catch(() => null);
+
+    if (!created) {
+      // đã like trước đó: đồng bộ likedSongs (phòng trường hợp thiếu)
+      await User.updateOne({ _id: me._id }, { $addToSet: { likedSongs: songId } });
+      const song = await Song.findById(songId).lean();
+      return res.status(200).json({
+        message: "Already liked",
+        likesCount: song?.likesCount ?? 0,
+        liked: true,
+      });
+    }
 
     const song = await Song.findByIdAndUpdate(
       songId,
@@ -19,35 +37,76 @@ export const likeSong = async (req, res, next) => {
 
     if (!song) return res.status(404).json({ message: "Song not found" });
 
-    // thông báo cho artist (nếu người like khác artist)
-    if (String(song.artistId) !== String(me._id)) {
+    await User.updateOne({ _id: me._id }, { $addToSet: { likedSongs: songId } });
+
+    if (song.artistId && String(song.artistId) !== String(me._id)) {
       await notify(song.artistId, {
-        content: `${me.fullName} đã thích bài hát "${song.title}"`,
+        content: `${me.fullName || "Someone"} đã thích bài hát "${song.title}"`,
         imageUrl: song.imageUrl,
-        meta: { type: "LIKE_SONG", songId }
-      });
+        meta: { type: "LIKE_SONG", songId },
+      }).catch(() => {});
     }
 
-    res.json({ message: "Liked", likesCount: song.likesCount });
-  } catch (e) { next(e); }
+    return res.json({ message: "Liked", likesCount: song.likesCount, liked: true });
+  } catch (e) {
+    next(e);
+  }
 };
 
 export const unlikeSong = async (req, res, next) => {
   try {
-    const me = req.user; const { songId } = req.params;
+    const me = req.user;
+    const { songId } = req.params;
+    if (!mongoose.Types.ObjectId.isValid(songId)) {
+      return res.status(400).json({ message: "Invalid songId" });
+    }
 
-    const removed = await Like.findOneAndDelete({ user: me._id, targetType: "song", targetId: songId });
-    if (!removed) return res.status(200).json({ message: "Chưa like để bỏ" });
+    const removed = await Like.findOneAndDelete({
+      user: me._id,
+      targetType: "song",
+      targetId: songId,
+    });
 
     const song = await Song.findByIdAndUpdate(
       songId,
-      { $inc: { likesCount: -1 } },
+      { $inc: { likesCount: removed ? -1 : 0 } },
       { new: true }
     ).lean();
 
     if (!song) return res.status(404).json({ message: "Song not found" });
-    res.json({ message: "Unliked", likesCount: Math.max(0, song.likesCount) });
-  } catch (e) { next(e); }
+
+    await User.updateOne({ _id: me._id }, { $pull: { likedSongs: songId } });
+
+    return res.json({
+      message: removed ? "Unliked" : "Was not liked",
+      likesCount: Math.max(0, song.likesCount || 0),
+      liked: false,
+    });
+  } catch (e) {
+    next(e);
+  }
+};
+
+export const getSongLikeStatus = async (req, res, next) => {
+  try {
+    const me = req.user;
+    const { songId } = req.params;
+    if (!mongoose.Types.ObjectId.isValid(songId)) {
+      return res.status(400).json({ message: "Invalid songId" });
+    }
+
+    const liked = !!(await Like.exists({
+      user: me._id,
+      targetType: "song",
+      targetId: songId,
+    }));
+
+    const song = await Song.findById(songId).select("likesCount").lean();
+
+    return res.json({ liked, likesCount: song?.likesCount ?? 0 });
+  } catch (e) {
+    next(e);
+  }
 };
 
 export const likeAlbum = async (req, res, next) => {

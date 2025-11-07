@@ -4,7 +4,6 @@ import { Comment } from "../models/comment.model.js";
 export async function getCommentsBySong(req, res) {
   const { songId } = req.params;
   try {
-    // lấy hết comment của bài hát, mới nhất trước
     const comments = await Comment.find({ song: songId })
       .sort({ createdAt: -1 })
       .populate("user", "username avatarUrl")
@@ -33,7 +32,7 @@ export async function createComment(req, res) {
       timestamp,
     });
 
-    const populated = await doc.populate("user", "username avatarUrl");
+    const populated = await doc.populate("user", "fullname imageUrl");
     return res.status(201).json(populated);
   } catch (err) {
     console.error("createComment error:", err);

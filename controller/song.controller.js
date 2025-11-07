@@ -300,30 +300,23 @@ export const getSongById = async (req, res, next) => {
 
     const song = await Song.findById(id).lean();
     if (!song) return res.status(404).json({ message: "Song not found" });
-
+    console.log(song);
     // lấy song.artistId -> artist
     const artistPromise = await User.findById(song.artistId)
       .select("_id fullName username imageUrl")
       .lean();
-
     // comments theo songId, populate user
-    const commentsPromise = await Comment.find({ songId: id })
+    const commentsPromise = await Comment.find({ song: id })
       .sort({ createdAt: -1 })
-      .populate("userId", "_id fullName username imageUrl")
+      .populate("user", "_id fullName username imageUrl")
       .lean();
-
-    const [artist, comments] = await Promise.all([
-      artistPromise,
-      commentsPromise,
-    ]);
-
-    return res.json({ song, artist, comments });
+    
+    return res.json({ song, artist: artistPromise, comments: commentsPromise });
   } catch (err) {
-    console.error("❌ Error in deleteAlbum:", err);
+    console.error("❌ Error:", err);
     res.status(500).json({ message: err.message });
   }
 };
-
 
 /**
  * PATCH /songs/:id

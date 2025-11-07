@@ -2,7 +2,7 @@ import { Router } from "express";
 import {
   getCommentsBySong,
   createComment,
-} from "../controllers/comment.controller.js";
+} from "../controller/comment.controller.js";
 
 const router = Router({ mergeParams: true });
 

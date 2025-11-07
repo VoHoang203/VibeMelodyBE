@@ -41,7 +41,6 @@ const storage = multer.diskStorage({
 
 const upload = multer({ storage });
 
-// ✅ Dùng multer cho route này
 router.post(
   "/songs",
   upload.fields([
@@ -53,15 +52,7 @@ router.post(
 
 router.get("/songs", listArtistSongs); // ?artistId=...&unassigned=true
 router.get("/all", getAllSongs);
-router.get("/albums", getAllAlbums);
-// POST create new album
-router.post("/albums", upload.single("coverImage"), createAlbum);
 
-// PATCH toggle visibility
-router.patch("/albums/:id/visibility", toggleAlbumVisibility);
-
-// DELETE album
-router.delete("/albums/:id", deleteAlbum);
 
 router.get("/songs/:id", getSongDetail);
 router.post("/songs/:id/like", toggleHideAlbum);
@@ -72,6 +63,15 @@ router.patch("/songs/:id", updateSong);
 router.delete("/songs/:id", deleteSong);
 
 // ALBUMS
+router.get("/allalbums", getAllAlbums);
+// POST create new album
+router.post("/albums", upload.single("coverImage"), createAlbum);
+
+// PATCH toggle visibility
+router.patch("/albums/:id/visibility", toggleAlbumVisibility);
+
+// DELETE album
+router.delete("/albums/:id", deleteAlbum);
 // form-data: imageFile + fields khác
 router.post("/albums", upload.fields([{ name: "imageFile" }]), createAlbum);
 
@@ -93,5 +93,5 @@ router.get("/allsongs", getAllSongs);
 // ALBUMS
 router.get("/allalbums", getAllAlbums);
 
-router.get("/songs/:id", getSongById);
+router.get("/songs/main/:id", getSongById);
 export default router;

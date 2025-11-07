@@ -12,7 +12,7 @@ export const getAllUsers = async (req, res, next) => {
     const { q = "" } = req.query;
 
     const filter = {};
-    if (currentUserId) filter.clerkId = { $ne: currentUserId };
+    if (currentUserId) filter._id = { $ne: currentUserId };
     if (q.trim()) {
       const rx = new RegExp(q.trim(), "i");
       filter.$or = [{ fullName: rx }, { username: rx }, { email: rx }];
