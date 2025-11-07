@@ -9,6 +9,7 @@ import connectDB from "./config/db.js";
 import albumUpdateRoutes from "./routes/media.routes.js";
 import chatRoute from "./routes/chat.routes.js"
 import bodyParser from "body-parser";
+import swaggerDocs from "./config/swagger.js";
 dotenv.config();
 connectDB();
 
@@ -37,7 +38,7 @@ app.use("/api", albumUpdateRoutes);
 app.use("/api", (await import("./routes/auth.route.js")).default);
 app.use("/api", (await import("./routes/payos.routes.js")).default);
 app.use("/api", chatRoute);
-
+swaggerDocs(app);
 // ✅ Root
 app.get("/", (req, res) => {
   res.send("API is running...");

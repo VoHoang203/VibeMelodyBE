@@ -6,7 +6,60 @@ import { planFromAmount, addMonths } from "../utils/artist-plan.js";
 import { requireAuth } from "../middleware/requireAuth.js";
 import { User } from "../models/user.model.js";
 const router = express.Router();
+/**
+ * @swagger
+ * tags:
+ *   - name: PayOS
+ *     description: API quản lý thanh toán PayOS
+ */
 
+/**
+ * @swagger
+ * /payos/create-payment:
+ *   post:
+ *     summary: Tạo link thanh toán PayOS và lưu Payment pending
+ *     tags: [PayOS]
+ *     security:
+ *       - bearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - orderCode
+ *               - amount
+ *               - cancelUrl
+ *               - returnUrl
+ *             properties:
+ *               orderCode:
+ *                 type: string
+ *                 description: Mã đơn hàng
+ *               amount:
+ *                 type: number
+ *                 description: Số tiền thanh toán
+ *               description:
+ *                 type: string
+ *                 description: Mô tả thanh toán
+ *               cancelUrl:
+ *                 type: string
+ *                 description: URL redirect khi hủy thanh toán
+ *               returnUrl:
+ *                 type: string
+ *                 description: URL redirect khi thanh toán thành công
+ *     responses:
+ *       200:
+ *         description: Kết quả trả về từ PayOS
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *       400:
+ *         description: Thiếu dữ liệu hoặc lỗi PayOS
+ *       401:
+ *         description: Unauthorized
+ */
 /**
  * POST /payos/create-payment
  * body: { orderCode, amount, description, cancelUrl, returnUrl }
@@ -51,7 +104,33 @@ router.post("/payos/create-payment", requireAuth,async (req, res) => {
     return res.status(400).json({ message: "PayOS create payment failed", error: err?.response?.data || err.message });
   }
 });
-
+/**
+ * @swagger
+ * /payos/status/{orderCode}:
+ *   get:
+ *     summary: Lấy trạng thái thanh toán PayOS và cập nhật DB Payment + User
+ *     tags: [PayOS]
+ *     parameters:
+ *       - in: path
+ *         name: orderCode
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: Mã đơn hàng
+ *     responses:
+ *       200:
+ *         description: Trạng thái thanh toán
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               example:
+ *                 status: PAID
+ *                 transactionId: "TX123456"
+ *                 amount: 100000
+ *       400:
+ *         description: Thiếu orderCode hoặc lỗi PayOS
+ */
 /**
  * GET /payos/status/:orderCode
  * - Gọi PayOS lấy trạng thái
