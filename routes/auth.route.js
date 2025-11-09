@@ -13,6 +13,10 @@ import {
   artistRegister,
   artistUpdateProfile,
   artistGetSubscription,
+  getMeMain,
+  updateMeProfile,
+  getMyLikedSongs,
+  getMyLibrary,
 } from "../controller/auth.controller.js";
 const router = express.Router();
 // Google Login Start
@@ -245,7 +249,7 @@ router.patch("/auth/profile", requireAuth, updateProfile);
  *       200:
  *         description: Đổi mật khẩu thành công
  */
-router.post("/auth/change-password", requireAuth, changePassword);
+router.put("/me/password", requireAuth, changePassword);
 
 /**
  * @swagger
@@ -326,5 +330,8 @@ router.patch("/artist/profile", requireAuth, artistUpdateProfile);
  *         description: Trả về thông tin gói
  */
 router.get("/artist/subscription", requireAuth, artistGetSubscription);
-
+router.get("/me/main", requireAuth, getMeMain);
+router.put("/me/profile", requireAuth, updateMeProfile);
+router.get("/me/liked-songs", requireAuth, getMyLikedSongs);
+router.get("/me/library", requireAuth, getMyLibrary);
 export default router;

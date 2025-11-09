@@ -21,10 +21,13 @@ import {
   listAlbumsByArtist,
   getAlbumById,
   getAllAlbums,
+  getAlbumMain,
+  getHomeMain
 } from "../controller/album.controller.js";
 import multer from "multer";
 import path from "path";
 import fs from "fs";
+import { searchArtists } from "../controller/artist.controller.js";
 const router = express.Router();
 
 // ✅ cấu hình multer riêng cho route này
@@ -364,7 +367,6 @@ router.delete("/albums/:id", deleteAlbum);
  *         description: Thông tin chi tiết bài hát
  */
 router.get("/songs/:id", getSongDetail);
-router.post("/songs/:id/like", toggleHideAlbum);
 /**
  * @swagger
  * /api/songs/{id}/comment:
@@ -553,4 +555,8 @@ router.get("/allsongs", getAllSongs);
  *         description: Lỗi server
  */
 router.get("/songs/main/:id", getSongById);
+router.get("/main/albums/:albumId", getAlbumMain);
+router.get("/main/home", getHomeMain);
+router.get("/artists/search", searchArtists);
+
 export default router;

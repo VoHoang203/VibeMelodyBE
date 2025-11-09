@@ -2,16 +2,20 @@
 import jwt from "jsonwebtoken";
 
 export const signAccess = (userId) =>
-  jwt.sign({ sub: userId }, process.env.JWT_ACCESS_SECRET, { expiresIn: "15m" });
+  jwt.sign({ sub: userId }, process.env.JWT_SECRET, {
+    expiresIn: "15m",
+  });
 
 export const signRefresh = (userId, jti) =>
-  jwt.sign({ sub: userId, jti }, process.env.JWT_REFRESH_SECRET, { expiresIn: "30d" });
+  jwt.sign({ sub: userId, jti }, process.env.JWT_SECRET, {
+    expiresIn: "30d",
+  });
 
 export const verifyAccess = (token) =>
-  jwt.verify(token, process.env.JWT_ACCESS_SECRET);
+  jwt.verify(token, process.env.JWT_SECRET);
 
 export const verifyRefresh = (token) =>
-  jwt.verify(token, process.env.JWT_REFRESH_SECRET);
+  jwt.verify(token, process.env.JWT_SECRET);
 
 // utils/serialize.js
 export const serializeUser = (u) => ({

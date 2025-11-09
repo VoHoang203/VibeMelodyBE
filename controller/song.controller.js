@@ -303,7 +303,7 @@ export const getSongById = async (req, res, next) => {
     console.log(song);
     // lấy song.artistId -> artist
     const artistPromise = await User.findById(song.artistId)
-      .select("_id fullName username imageUrl")
+      .select("_id fullName username imageUrl followers")
       .lean();
     // comments theo songId, populate user
     const commentsPromise = await Comment.find({ song: id })

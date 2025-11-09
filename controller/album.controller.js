@@ -1,6 +1,8 @@
 // controllers/album.controller.js
 import { Album } from "../models/album.model.js";
 import { User } from "../models/user.model.js";
+import { Song } from "../models/song.model.js";
+import { Like } from "../models/like.model.js";
 import { uploadToCloudinary } from "../config/cloudinary.js";
 import { notify } from "../services/notify.service.js";
 import mongoose from "mongoose";
@@ -224,7 +226,6 @@ export const getAlbumById = async (req, res, next) => {
   }
 };
 
-
 export const getAllAlbums = async (req, res) => {
   try {
     const { artistId, q = "" } = req.query;
@@ -255,6 +256,123 @@ export const getAllAlbums = async (req, res) => {
     return res.json(albums);
   } catch (error) {
     console.error("getAllAlbums error:", error);
+    return res
+      .status(500)
+      .json({ message: error.message || "Internal Server Error" });
+  }
+};
+
+export const getAlbumMain = async (req, res, next) => {
+  try {
+    const { albumId } = req.params;
+
+    if (!mongoose.Types.ObjectId.isValid(albumId)) {
+      return res.status(400).json({ message: "Invalid albumId" });
+    }
+
+    // lấy album + artist + song
+    const albumDoc = await Album.findById(albumId)
+      .populate("artistId", "fullName imageUrl") // user artist
+      .lean();
+
+    if (!albumDoc || albumDoc.isHidden) {
+      return res.status(404).json({ message: "Album not found" });
+    }
+
+    // lấy list bài hát trong album
+    const songs = await Song.find({ _id: { $in: albumDoc.songs || [] } })
+      .select("title artist imageUrl audioUrl duration createdAt")
+      .lean();
+
+    const artistUser = albumDoc.artistId; // vì đã populate
+    const artistName = artistUser?.fullName || albumDoc.artist;
+
+    return res.json({
+      album: {
+        _id: albumDoc._id,
+        title: albumDoc.title,
+        type: "Album",
+        artistName,
+        artistId: artistUser?._id || albumDoc.artistId,
+        imageUrl: albumDoc.imageUrl,
+        releaseYear: albumDoc.releaseYear,
+        likesCount: albumDoc.likesCount || 0,
+        totalTracks: (albumDoc.songs || []).length,
+      },
+      songs: songs?.map((s) => ({
+        _id: s._id,
+        title: s.title,
+        artistName: s.artist || artistName,
+        duration: s.duration || 0,
+        imageUrl: s.imageUrl || albumDoc.imageUrl,
+        audioUrl: s.audioUrl,
+        createdAt: s.createdAt,
+      })),
+    });
+  } catch (error) {
+    console.error("getAllMainDetail error:", error);
+    return res
+      .status(500)
+      .json({ message: error.message || "Internal Server Error" });
+  }
+};
+
+/**
+ * GET /main/home
+ * Public: trả về trendingSongs, trendingAlbums, newestSongs
+ */
+export const getHomeMain = async (req, res, next) => {
+  try {
+    const songLimit = 12;
+    const albumLimit = 12;
+
+    const [trendingSongs, trendingAlbums, newestSongs] = await Promise.all([
+      // Songs trending theo likesCount desc
+      Song.find({ isHidden: { $ne: true } })
+        .sort({ likesCount: -1, createdAt: -1 })
+        .limit(songLimit)
+        .select("_id title artistName imageUrl audioUrl likesCount createdAt")
+        .lean(),
+
+      // Albums trending theo likesCount desc
+      Album.find({ isHidden: { $ne: true } })
+        .sort({ likesCount: -1, createdAt: -1 })
+        .limit(albumLimit)
+        .select("_id title imageUrl likesCount artistId releaseYear songs")
+        .populate({
+          path: "artistId",
+          model: "User",
+          select: "fullName artistProfile",
+        })
+        .lean(),
+
+      // Songs newest theo createdAt desc
+      Song.find({ isHidden: { $ne: true } })
+        .sort({ createdAt: -1 })
+        .limit(songLimit)
+        .select("_id title artistName imageUrl audioUrl likesCount createdAt")
+        .lean(),
+    ]);
+
+    const mappedTrendingAlbums = trendingAlbums.map((a) => ({
+      _id: a._id,
+      title: a.title,
+      imageUrl: a.imageUrl,
+      likesCount: a.likesCount || 0,
+      artistName:
+        a.artistId?.artistProfile?.stageName ||
+        a.artistId?.fullName ||
+        "Unknown",
+      tracksCount: Array.isArray(a.songs) ? a.songs.length : 0,
+      releaseYear: a.releaseYear,
+    }));
+
+    return res.json({
+      trendingSongs,
+      trendingAlbums: mappedTrendingAlbums,
+      newestSongs,
+    });
+  } catch (error) {
     return res
       .status(500)
       .json({ message: error.message || "Internal Server Error" });

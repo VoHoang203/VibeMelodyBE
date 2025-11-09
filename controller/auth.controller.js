@@ -4,7 +4,8 @@ import jwt from "jsonwebtoken";
 import crypto from "crypto";
 import bcrypt from "bcryptjs";
 import { User } from "../models/user.model.js";
-
+import { Song } from "../models/song.model.js";
+import { Album } from "../models/album.model.js";
 /* =========================
  *  RefreshToken Model
  * ========================= */
@@ -26,8 +27,8 @@ const RefreshToken =
 /* =========================
  *  JWT Helpers
  * ========================= */
-const ACCESS_SECRET = process.env.JWT_ACCESS_SECRET || "dev_access_secret";
-const REFRESH_SECRET = process.env.JWT_REFRESH_SECRET || "dev_refresh_secret";
+const ACCESS_SECRET = process.env.JWT_SECRET || "dev_access_secret";
+const REFRESH_SECRET = process.env.JWT_SECRET || "dev_refresh_secret";
 
 const signAccess = (userId) =>
   jwt.sign({ sub: userId }, ACCESS_SECRET, { expiresIn: "15m" });
@@ -101,7 +102,8 @@ export const signup = async (req, res) => {
     }
 
     const exists = await User.findOne({ email });
-    if (exists) return res.status(409).json({ message: "Email already registered" });
+    if (exists)
+      return res.status(409).json({ message: "Email already registered" });
 
     // pre('save') trong user.model sẽ hash
     const user = await User.create({ fullName, email, password });
@@ -113,7 +115,9 @@ export const signup = async (req, res) => {
 
     return res.status(201).json({ user: serializeUser(user), ...tokens });
   } catch (err) {
-    return res.status(500).json({ message: "Server error", error: err?.message });
+    return res
+      .status(500)
+      .json({ message: "Server error", error: err?.message });
   }
 };
 
@@ -133,10 +137,11 @@ export const login = async (req, res) => {
       ua: req.headers["user-agent"],
       ip: req.ip,
     });
-
     return res.json({ user: serializeUser(user), ...tokens });
   } catch (err) {
-    return res.status(500).json({ message: "Server error", error: err?.message });
+    return res
+      .status(500)
+      .json({ message: "Server error", error: err?.message });
   }
 };
 
@@ -149,7 +154,10 @@ export const refreshToken = async (req, res) => {
     }
 
     const payload = verifyRefresh(incoming); // { sub, jti }
-    const rec = await RefreshToken.findOne({ jti: payload.jti, user: payload.sub });
+    const rec = await RefreshToken.findOne({
+      jti: payload.jti,
+      user: payload.sub,
+    });
     if (!rec || rec.revokedAt) {
       return res.status(401).json({ message: "Invalid refresh token" });
     }
@@ -187,22 +195,22 @@ export const updateProfile = async (req, res) => {
 };
 
 // POST /auth/change-password
-export const changePassword = async (req, res) => {
-  const { oldPassword, newPassword } = req.body || {};
-  if (!oldPassword || !newPassword) {
-    return res.status(400).json({ message: "Missing fields" });
-  }
+// export const changePassword = async (req, res) => {
+//   const { oldPassword, newPassword } = req.body || {};
+//   if (!oldPassword || !newPassword) {
+//     return res.status(400).json({ message: "Missing fields" });
+//   }
 
-  if (!req.user.password) {
-    return res.status(400).json({ message: "Password login not enabled" });
-  }
-  const ok = await bcrypt.compare(oldPassword, req.user.password);
-  if (!ok) return res.status(401).json({ message: "Old password incorrect" });
+//   if (!req.user.password) {
+//     return res.status(400).json({ message: "Password login not enabled" });
+//   }
+//   const ok = await bcrypt.compare(oldPassword, req.user.password);
+//   if (!ok) return res.status(401).json({ message: "Old password incorrect" });
 
-  req.user.password = newPassword; // pre('save') sẽ hash
-  await req.user.save();
-  return res.json({ ok: true });
-};
+//   req.user.password = newPassword; // pre('save') sẽ hash
+//   await req.user.save();
+//   return res.json({ ok: true });
+// };
 
 // POST /auth/logout
 export const logout = async (req, res) => {
@@ -244,7 +252,8 @@ export const artistRegister = async (req, res) => {
 // PATCH /artist/profile
 export const artistUpdateProfile = async (req, res) => {
   const { stageName, bio } = req.body || {};
-  if (!req.user.isArtist) return res.status(400).json({ message: "Not an artist" });
+  if (!req.user.isArtist)
+    return res.status(400).json({ message: "Not an artist" });
   req.user.artistProfile = req.user.artistProfile || {};
   if (stageName !== undefined) req.user.artistProfile.stageName = stageName;
   if (bio !== undefined) req.user.artistProfile.bio = bio;
@@ -254,6 +263,279 @@ export const artistUpdateProfile = async (req, res) => {
 
 // GET /artist/subscription
 export const artistGetSubscription = async (req, res) => {
-  if (!req.user.isArtist) return res.status(400).json({ message: "Not an artist" });
+  if (!req.user.isArtist)
+    return res.status(400).json({ message: "Not an artist" });
   return res.json(req.user.artistProfile?.subscription || null);
+};
+/**
+ * 🔥 NEW: GET /me/main
+ * Trả về info user + likedSongs + likedAlbums cho trang Profile
+ */
+export const getMeMain = async (req, res, next) => {
+  try {
+    const meId = req.user._id;
+
+    const me = await User.findById(meId)
+      .select("fullName email imageUrl likedSongs likedAlbums isArtist")
+      .lean();
+
+    if (!me) {
+      return res.status(404).json({ message: "User not found" });
+    }
+
+    const likedSongIds = me.likedSongs || [];
+    const likedAlbumIds = me.likedAlbums || [];
+
+    const [songs, albums] = await Promise.all([
+      Song.find({
+        _id: { $in: likedSongIds },
+        isHidden: { $ne: true },
+      })
+        .select("_id title imageUrl artist artistName artistId")
+        .lean(),
+      Album.find({
+        _id: { $in: likedAlbumIds },
+        isHidden: { $ne: true },
+      })
+        .select("_id title imageUrl artist artistId releaseYear")
+        .lean(),
+    ]);
+
+    const likedSongs = songs.map((s) => ({
+      _id: s._id,
+      title: s.title,
+      imageUrl: s.imageUrl,
+      artistName: s.artistName || s.artist,
+    }));
+
+    const likedAlbums = albums.map((a) => ({
+      _id: a._id,
+      title: a.title,
+      imageUrl: a.imageUrl,
+      releaseYear: a.releaseYear,
+      artistName: a.artist,
+    }));
+
+    return res.json({
+      user: {
+        _id: me._id,
+        fullName: me.fullName,
+        email: me.email,
+        imageUrl: me.imageUrl,
+        isArtist: me.isArtist,
+      },
+      likedSongs,
+      likedAlbums,
+    });
+  } catch (e) {
+    next(e);
+  }
+};
+
+/**
+ * 🔥 NEW: PUT /me/profile
+ * Update profile user thường: fullName, imageUrl (KHÔNG có bio)
+ */
+export const updateMeProfile = async (req, res, next) => {
+  try {
+    const meId = req.user._id;
+    const { fullName, imageUrl } = req.body;
+
+    const update = {};
+
+    if (typeof fullName === "string" && fullName.trim()) {
+      update.fullName = fullName.trim();
+    }
+    if (typeof imageUrl === "string") {
+      update.imageUrl = imageUrl;
+    }
+
+    const updated = await User.findByIdAndUpdate(
+      meId,
+      { $set: update },
+      { new: true }
+    ).lean();
+
+    if (!updated) {
+      return res.status(404).json({ message: "User not found" });
+    }
+
+    return res.json({
+      _id: updated._id,
+      fullName: updated.fullName,
+      email: updated.email,
+      imageUrl: updated.imageUrl,
+    });
+  } catch (e) {
+    next(e);
+  }
+};
+/**
+ * PUT /me/password
+ * Đổi password cho user hiện tại
+ */
+export const changePassword = async (req, res, next) => {
+  try {
+    const me = await User.findById(req.user._id);
+    if (!me) {
+      return res.status(404).json({ message: "User not found" });
+    }
+
+    const { currentPassword, newPassword } = req.body;
+    if (!currentPassword || !newPassword) {
+      return res
+        .status(400)
+        .json({ message: "currentPassword and newPassword are required" });
+    }
+
+    if (!me.password) {
+      return res
+        .status(400)
+        .json({ message: "Password login is not enabled for this account" });
+    }
+
+    const isMatch = await me.comparePassword(currentPassword);
+    if (!isMatch) {
+      return res.status(400).json({ message: "Current password is incorrect" });
+    }
+
+    me.password = newPassword; // pre('save') sẽ hash
+    await me.save();
+
+    return res.json({ message: "Password updated successfully" });
+  } catch (e) {
+    next(e);
+  }
+};
+export const getMyLikedSongs = async (req, res, next) => {
+  try {
+    const meId = req.user?._id;
+    if (!meId) {
+      return res.status(401).json({ message: "Unauthorized" });
+    }
+
+    const me = await User.findById(meId)
+      .select("likedSongs")
+      .lean();
+
+    if (!me) {
+      return res.status(404).json({ message: "User not found" });
+    }
+
+    const likedIds = Array.isArray(me.likedSongs) ? me.likedSongs : [];
+    if (!likedIds.length) {
+      return res.json({ songs: [] });
+    }
+
+    const songs = await Song.find({
+      _id: { $in: likedIds.map((id) => new mongoose.Types.ObjectId(id)) },
+      isHidden: { $ne: true },
+    })
+      .populate({
+        path: "artistId",
+        model: "User",
+        select: "fullName",
+      })
+      .populate({
+        path: "albumId",
+        model: "Album",
+        select: "title",
+      })
+      .sort({ createdAt: -1 })
+      .lean();
+
+    const mapped = songs.map((s) => ({
+      _id: s._id,
+      title: s.title,
+      artistName: s.artist || s.artistId?.fullName || "",
+      albumTitle: s.albumId?.title || "",
+      duration: s.duration || 0,
+      imageUrl: s.imageUrl || "",
+      audioUrl: s.audioUrl || "",
+      likesCount: s.likesCount || 0,
+      createdAt: s.createdAt,
+    }));
+
+    return res.json({ songs: mapped });
+  } catch (err) {
+    return res
+      .status(500)
+      .json({ message: "Server error", error: err?.message });
+  }
+};
+
+export const getMyLibrary = async (req, res, next) => {
+  try {
+    const meId = req.user?._id;
+    if (!meId) {
+      return res.status(401).json({ message: "Unauthorized" });
+    }
+
+    const me = await User.findById(meId)
+      .select("following likedAlbums likedSongs")
+      .lean();
+
+    if (!me) {
+      return res.status(404).json({ message: "User not found" });
+    }
+
+    const followingIds = Array.isArray(me.following) ? me.following : [];
+    const likedAlbumIds = Array.isArray(me.likedAlbums) ? me.likedAlbums : [];
+    const likedSongsCount = Array.isArray(me.likedSongs)
+      ? me.likedSongs.length
+      : 0;
+
+    const [artists, albums] = await Promise.all([
+      // artists mà user đang follow
+      User.find({
+        _id: { $in: followingIds.map((id) => new mongoose.Types.ObjectId(id)) },
+        isArtist: true,
+      })
+        .select("_id fullName imageUrl followers artistProfile")
+        .lean(),
+
+      // albums user đã like
+      Album.find({
+        _id: {
+          $in: likedAlbumIds.map((id) => new mongoose.Types.ObjectId(id)),
+        },
+        isHidden: { $ne: true },
+      })
+        .select("_id title imageUrl artistId songs")
+        .populate({
+          path: "artistId",
+          model: "User",
+          select: "fullName artistProfile",
+        })
+        .lean(),
+    ]);
+
+    const mappedArtists = artists.map((a) => ({
+      _id: a._id,
+      name: a.artistProfile?.stageName || a.fullName,
+      imageUrl: a.imageUrl,
+      followersCount: Array.isArray(a.followers) ? a.followers.length : 0,
+    }));
+
+    const mappedAlbums = albums.map((al) => ({
+      _id: al._id,
+      title: al.title,
+      artistName:
+        al.artistId?.artistProfile?.stageName ||
+        al.artistId?.fullName ||
+        "Unknown",
+      imageUrl: al.imageUrl,
+      tracksCount: Array.isArray(al.songs) ? al.songs.length : 0,
+    }));
+
+    return res.json({
+      artists: mappedArtists,
+      albums: mappedAlbums,
+      likedSongsCount,
+    });
+  } catch (err) {
+    return res
+      .status(500)
+      .json({ message: "Server error", error: err?.message });
+  }
 };

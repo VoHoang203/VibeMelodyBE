@@ -1,6 +1,8 @@
 // routes/chat.routes.js
 import express from "express";
-import { checkArtistStatus } from "../controller/artist.controller.js";
+import { checkArtistStatus, getArtistMain,
+  updateArtistProfile} from "../controller/artist.controller.js";
+
 import { requireAuth } from "../middleware/requireAuth.js"; // bạn đã có middleware này rồi đúng không?
 
 const router = express.Router();
@@ -41,7 +43,11 @@ const router = express.Router();
  *       500:
  *         description: Lỗi server
  */
-router.get("/check", requireAuth, checkArtistStatus);
+router.get("/artists/check", requireAuth, checkArtistStatus);
+router.get("/artists/:artistId/main", getArtistMain);
+
+// artist update profile
+router.put("/artists/me/profile", requireAuth, updateArtistProfile);
 
 
 export default router;

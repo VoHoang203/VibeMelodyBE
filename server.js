@@ -8,11 +8,14 @@ import morgan from "morgan";
 import connectDB from "./config/db.js";
 import albumUpdateRoutes from "./routes/media.routes.js";
 import chatRoute from "./routes/chat.routes.js"
-import bodyParser from "body-parser";
 import swaggerDocs from "./config/swagger.js";
 import { initializeSocket } from "./sockets/socket.js";
 import commentsRouter from "./routes/comment.routes.js";
 import likeRoutes from "./routes/like.routes.js";
+import followRoutes from "./routes/follow.routes.js";
+import aiChatRoutes from "./routes/aiChat.routes.js";
+import passport from "passport";
+import "./config/passport.js";
 
 dotenv.config();
 connectDB();
@@ -26,13 +29,22 @@ app.use(
     credentials: true,
   })
 );
-app.use(bodyParser.json());
-
+app.use(passport.initialize());
 // ✅ Logging
 app.use(morgan("dev"));
 
 // ✅ Body parsers
-app.use(express.json());
+app.use(
+  express.json({
+    limit: "100mb",
+  })
+);
+app.use(
+  express.urlencoded({
+    extended: true,
+    limit: "100mb",
+  })
+);
 app.use(express.urlencoded({ extended: true, limit: "100mb" }));
 
 
@@ -43,9 +55,11 @@ app.use("/api", (await import("./routes/auth.route.js")).default);
 app.use("/api", (await import("./routes/payos.routes.js")).default);
 app.use("/api", chatRoute);
 
-app.use("/api/artist", (await import("./routes/artist.route.js")).default);
+app.use("/api", (await import("./routes/artist.route.js")).default);
 app.use("/api/songs/:songId/comments", commentsRouter);
 app.use("/api", likeRoutes);
+app.use("/api", followRoutes);
+app.use("/api/ai", aiChatRoutes);
 // ✅ Root
 swaggerDocs(app);
 app.get("/", (req, res) => {

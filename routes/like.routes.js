@@ -1,6 +1,13 @@
 import { Router } from "express";
 import { requireAuth } from "../middleware/requireAuth.js";
-import { likeSong, unlikeSong, getSongLikeStatus } from "../controller/like.controller.js";
+import {
+  likeSong,
+  unlikeSong,
+  getSongLikeStatus,
+  likeAlbum,
+  unlikeAlbum,
+  getAlbumLikeStatus,
+} from "../controller/like.controller.js";
 
 const router = Router();
 
@@ -106,8 +113,8 @@ router.post("/songs/:songId/like", requireAuth, likeSong);
  *         description: Không tìm thấy bài hát
  */
 
-
 router.delete("/songs/:songId/like", requireAuth, unlikeSong);
-
-
+router.get("/albums/:albumId/like-status", requireAuth, getAlbumLikeStatus);
+router.post("/albums/:albumId/like", requireAuth, likeAlbum);
+router.delete("/albums/:albumId/like", requireAuth, unlikeAlbum);
 export default router;

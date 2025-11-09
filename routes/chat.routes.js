@@ -1,6 +1,7 @@
 // routes/chat.routes.js
 import express from "express";
-import { getAllUsers, getMessages } from "../controller/chat.controller.js";
+import { getAllUsers, getMessages,getAllNotifications } from "../controller/chat.controller.js";
+import { requireAuth } from "../controller/auth.controller.js";
 
 const router = express.Router();
 /**
@@ -60,7 +61,7 @@ const router = express.Router();
  *       401:
  *         description: Không có quyền truy cập
  */
-router.get("/chat/users", getAllUsers);
+router.get("/chat/users",requireAuth, getAllUsers);
 
 /**
  * @swagger
@@ -109,6 +110,43 @@ router.get("/chat/users", getAllUsers);
  *       401:
  *         description: Không có quyền truy cập
  */
-router.get("/chat/messages/:userId", getMessages);
-
+router.get("/chat/messages/:userId",requireAuth, getMessages);
+// 🆕 Route lấy danh sách thông báo
+/**
+ * @swagger
+ * /chat/allnoti:
+ *   get:
+ *     summary: Lấy danh sách thông báo của người dùng hiện tại
+ *     tags: [Chat]
+ *     description: Trả về danh sách các thông báo (notification) từ cơ sở dữ liệu
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: Thành công - trả về danh sách thông báo
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: array
+ *               items:
+ *                 type: object
+ *                 properties:
+ *                   _id:
+ *                     type: string
+ *                   content:
+ *                     type: string
+ *                     example: "Your song was liked by user123"
+ *                   imageUrl:
+ *                     type: string
+ *                     example: "https://example.com/image.jpg"
+ *                   at:
+ *                     type: string
+ *                     format: date-time
+ *                   meta:
+ *                     type: object
+ *                     example: { type: "LIKE_SONG", songId: "abc123" }
+ *       401:
+ *         description: Không có quyền truy cập
+ */
+router.get("/chat/allnoti", requireAuth, getAllNotifications);
 export default router;
