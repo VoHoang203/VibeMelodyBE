@@ -90,28 +90,69 @@ export const createSong = async (req, res) => {
  * GET /songs?artistId=...&unassigned=true|false
  * - Trả danh sách bài hát của nghệ sĩ (có thể lọc "chưa thuộc album").
  */
+/**
+ * GET /songs?artistId=...&unassigned=true
+ * → list toàn bộ bài hát của 1 artist
+ */
 export const listArtistSongs = async (req, res, next) => {
   try {
     const { artistId, unassigned } = req.query;
-    if (!artistId) return res.status(400).json({ message: "Missing artistId" });
+    if (!artistId || !mongoose.Types.ObjectId.isValid(artistId)) {
+      return res.status(400).json({ message: "Missing or invalid artistId" });
+    }
 
     const filter = { artistId };
     if (String(unassigned) === "true") filter.albumId = null;
 
-    const songs = await Song.find(filter).sort({ createdAt: -1 });
-    res.json(songs);
-  } catch (e) {
-    next(e);
-    res.status(500).json({ message: e.message });
+    const songs = await Song.find(filter)
+      .populate("albumId", "title")
+      .sort({ createdAt: -1 })
+      .lean();
+
+    // map thêm albumTitle để FE dùng cho dễ
+    const payload = songs.map((s) => ({
+      _id: s._id,
+      title: s.title,
+      artist: s.artist,
+      artistId: s.artistId,
+      imageUrl: s.imageUrl,
+      audioUrl: s.audioUrl,
+      duration: s.duration,
+      likesCount: s.likesCount ?? 0,
+      createdAt: s.createdAt,
+      albumId: s.albumId?._id || null,
+      albumTitle: s.albumId?.title || "",
+    }));
+
+    return res.json(payload);
+  } catch (err) {
+    res.status(500).json({ message: err.message });
   }
 };
 
-export const getSongDetail = async (req, res) => {
+export const getSongDetail = async (req, res, next) => {
   try {
     const { id } = req.params;
-    const song = await Song.findById(id);
+    if (!mongoose.Types.ObjectId.isValid(id)) {
+      return res.status(400).json({ message: "Invalid song id" });
+    }
+
+    const song = await Song.findById(id)
+      .lean();
+
     if (!song) return res.status(404).json({ message: "Song not found" });
-    res.json(song);
+
+    return res.json({
+      _id: song._id,
+      title: song.title,
+      artist: song.artist,
+      artistId: song.artistId,
+      imageUrl: song.imageUrl,
+      audioUrl: song.audioUrl,
+      duration: song.duration,
+      likesCount: song.likesCount ?? 0,
+      createdAt: song.createdAt
+    });
   } catch (err) {
     res.status(500).json({ message: err.message });
   }
@@ -322,20 +363,31 @@ export const getSongById = async (req, res, next) => {
  * PATCH /songs/:id
  * → Cập nhật thông tin bài hát
  */
-export const updateSong = async (req, res) => {
+export const updateSong = async (req, res, next) => {
   try {
     const { id } = req.params;
     const { title, duration, artistName, albumId } = req.body;
 
+    const update = {};
+    if (typeof title === "string") update.title = title;
+    if (typeof duration === "number") update.duration = duration;
+    if (typeof artistName === "string") update.artist = artistName;
+    if (typeof albumId === "string" || albumId === null) update.albumId = albumId;
+
     const updated = await Song.findByIdAndUpdate(
       id,
-      { title, duration, artist: artistName, albumId },
+      update,
       { new: true }
-    );
+    ).lean();
 
     if (!updated) return res.status(404).json({ message: "Song not found" });
-    res.json({ message: "Cập nhật thành công", song: updated });
+
+    return res.json({
+      message: "Cập nhật thành công",
+      song: updated,
+    });
   } catch (err) {
+    console.error("❌ Error:", err);
     res.status(500).json({ message: err.message });
   }
 };
@@ -344,21 +396,21 @@ export const updateSong = async (req, res) => {
  * DELETE /songs/:id
  * → Xóa bài hát
  */
-export const deleteSong = async (req, res) => {
+export const deleteSong = async (req, res, next) => {
   try {
     const { id } = req.params;
     const deleted = await Song.findByIdAndDelete(id);
     if (!deleted) return res.status(404).json({ message: "Song not found" });
 
-    // Nếu bài hát thuộc album nào thì gỡ ra
     if (deleted.albumId) {
       await Album.findByIdAndUpdate(deleted.albumId, {
         $pull: { songs: deleted._id },
       });
     }
 
-    res.json({ message: "Đã xóa bài hát thành công" });
+    return res.json({ message: "Đã xóa bài hát thành công" });
   } catch (err) {
+    console.error("❌ Error:", err);
     res.status(500).json({ message: err.message });
   }
 };
