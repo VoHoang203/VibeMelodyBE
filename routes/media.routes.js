@@ -311,7 +311,7 @@ router.get("/allalbums", getAllAlbums);
  *       500:
  *         description: Lỗi server
  */
-router.post("/albums", upload.single("coverImage"), createAlbum);
+//router.post("/albums", upload.single("coverImage"), createAlbum);
 
 /**
  * @swagger
