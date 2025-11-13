@@ -1,12 +1,13 @@
 import mongoose from "mongoose";
 import { Comment } from "../models/comment.model.js";
+import { User } from "../models/user.model.js";
 
 export async function getCommentsBySong(req, res) {
   const { songId } = req.params;
   try {
     const comments = await Comment.find({ song: songId })
       .sort({ createdAt: -1 })
-      .populate("user", "username avatarUrl")
+      .populate("user", "fullname imageUrl")
       .lean();
 
     return res.json(comments);
@@ -18,8 +19,9 @@ export async function getCommentsBySong(req, res) {
 
 export async function createComment(req, res) {
   const { songId } = req.params;
-  const { userId, content, timestamp } = req.body; 
-
+  const {  content, timestamp } = req.body; 
+  const userId = req.auth?.userId || req.user?._id; 
+  console.log(userId)
   if (!userId || !content) {
     return res.status(400).json({ message: "userId and content are required" });
   }

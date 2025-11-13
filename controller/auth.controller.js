@@ -31,7 +31,7 @@ const ACCESS_SECRET = process.env.JWT_SECRET || "dev_access_secret";
 const REFRESH_SECRET = process.env.JWT_SECRET || "dev_refresh_secret";
 
 const signAccess = (userId) =>
-  jwt.sign({ sub: userId }, ACCESS_SECRET, { expiresIn: "15m" });
+  jwt.sign({ sub: userId }, ACCESS_SECRET, { expiresIn: "50m" });
 
 const signRefresh = (userId, jti) =>
   jwt.sign({ sub: userId, jti }, REFRESH_SECRET, { expiresIn: "30d" });
@@ -273,7 +273,7 @@ export const artistGetSubscription = async (req, res) => {
  */
 export const getMeMain = async (req, res, next) => {
   try {
-    const meId = req.user._id;
+    const meId = req.auth?.userId || req.user?._id;;
 
     const me = await User.findById(meId)
       .select("fullName email imageUrl likedSongs likedAlbums isArtist")
@@ -327,8 +327,10 @@ export const getMeMain = async (req, res, next) => {
       likedSongs,
       likedAlbums,
     });
-  } catch (e) {
-    next(e);
+  } catch (error) {
+    return res
+      .status(500)
+      .json({ message: "Server error", error: error?.message });
   }
 };
 
@@ -338,7 +340,7 @@ export const getMeMain = async (req, res, next) => {
  */
 export const updateMeProfile = async (req, res, next) => {
   try {
-    const meId = req.user._id;
+    const meId = req.auth?.userId || req.user?._id;
     const { fullName, imageUrl } = req.body;
 
     const update = {};

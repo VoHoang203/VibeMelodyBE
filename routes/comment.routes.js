@@ -3,6 +3,7 @@ import {
   getCommentsBySong,
   createComment,
 } from "../controller/comment.controller.js";
+import { requireAuth } from "../middleware/requireAuth.js";
 
 const router = Router({ mergeParams: true });
 
@@ -71,6 +72,6 @@ router.get("/", getCommentsBySong);
  *       401:
  *         description: Không có quyền truy cập
  */
-router.post("/", createComment);
+router.post("/",requireAuth, createComment);
 
 export default router;
